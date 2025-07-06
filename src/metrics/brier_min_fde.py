@@ -37,7 +37,7 @@ class brierMinFDE(Metric):
             
             min_fde, min_fde_indices = fde.min(-1)
 
-            scores = torch.softmax(scores.double(), dim=-1)
+            scores = torch.softmax(scores.float(), dim=-1)
             min_fde_scores = scores[torch.arange(pred.shape[0]), min_fde_indices]
             brier_min_fde = min_fde + (1-min_fde_scores)**2
 

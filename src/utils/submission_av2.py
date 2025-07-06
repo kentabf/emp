@@ -29,8 +29,8 @@ class SubmissionAv2:
         track_ids = data["track_id"]
         batch = len(track_ids)
 
-        origin = data["origin"].view(batch, 1, 1, 2).double()
-        theta = data["theta"].double()
+        origin = data["origin"].view(batch, 1, 1, 2).float()
+        theta = data["theta"].float()
 
         rotate_mat = torch.stack(
             [
@@ -44,11 +44,11 @@ class SubmissionAv2:
 
         with torch.no_grad():
             global_trajectory = (
-                torch.matmul(trajectory[..., :2].double(), rotate_mat.unsqueeze(1))
+                torch.matmul(trajectory[..., :2].float(), rotate_mat.unsqueeze(1))
                 + origin
             )
             if not normalized_probability:
-                probability = torch.softmax(probability.double(), dim=-1)
+                probability = torch.softmax(probability.float(), dim=-1)
 
         global_trajectory = global_trajectory.detach().cpu().numpy()
         probability = probability.detach().cpu().numpy()

@@ -4,29 +4,46 @@ import hydra
 import pytorch_lightning as pl
 from hydra.utils import instantiate, to_absolute_path
 from importlib import import_module
-
+import torch
 
 @hydra.main(version_base=None, config_path="./conf/", config_name="config")
 def main(conf):
     pl.seed_everything(conf.seed)
-    
+    breakpoint()
     log_base_dir = "/".join( conf.checkpoint.split("/")[:-2] ) + "/"
     checkpoint = to_absolute_path(conf.checkpoint)
     assert os.path.exists(checkpoint), f"Checkpoint {checkpoint} does not exist"
 
     model_path = conf.model.target._target_
     module = import_module(model_path[: model_path.rfind(".")])
+
     Model: pl.LightningModule = getattr(module, model_path[model_path.rfind(".") + 1 :])
-    model = Model.load_from_checkpoint(checkpoint)
+    model = Model.load_from_checkpoint(
+        checkpoint,
+        decoder=conf.model.target.decoder
+    )
+
+    # from omegaconf import OmegaConf; print(OmegaConf.to_yaml(conf))
+
+    accelerator = getattr(conf, "accelerator", "auto")
+    if accelerator == "auto":
+        if torch.cuda.is_available():
+            accelerator = "cuda"
+        elif torch.backends.mps.is_available():
+            accelerator = "mps"
+        else:
+            accelerator = "cpu"
 
     trainer = pl.Trainer(
         logger=False,
-        accelerator="gpu",
-        devices=conf.gpus,
+        accelerator=accelerator,
+        devices=1,
         max_epochs=1,
         limit_val_batches=conf.limit_val_batches,
         limit_test_batches=conf.limit_test_batches,
-    )
+     )
+    
+    breakpoint()
 
     datamodule: pl.LightningDataModule = instantiate(conf.datamodule, test=conf.test)
 

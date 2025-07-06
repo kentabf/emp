@@ -14,9 +14,14 @@ dm: av2
 output: ${model.name}-${model.phase}_${dm}
 
 # trainer
+# num_workers: 6
+# gpus: 1
+# sync_bn: true
 num_workers: 6
-gpus: 1
-sync_bn: true
+# lightning ≥2.x uses “devices/accelerator”
+accelerator: auto
+devices: 1           # stays 1 for MPS
+sync_bn: false       # only works on CUDA
 batch_size: 128
 epochs: 60
 warmup_epochs: 10

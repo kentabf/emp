@@ -32,14 +32,15 @@ def main(conf):
     callbacks = [
         ModelCheckpoint(
             dirpath=os.path.join(output_dir, "checkpoints"),
-            filename="{epoch}",
+            filename="{epoch}_emp_small",
             monitor=f"{conf.monitor}",
             mode="min",
             save_top_k=conf.save_top_k,
             save_last=True,
+            every_n_train_steps=100,
         ),
         RichModelSummary(max_depth=1),
-        RichProgressBar(),
+        # RichProgressBar(),
         LearningRateMonitor(logging_interval="epoch"),
     ]
 
@@ -47,18 +48,20 @@ def main(conf):
         logger=logger,
         gradient_clip_val=conf.gradient_clip_val,
         gradient_clip_algorithm=conf.gradient_clip_algorithm,
-        max_epochs=conf.epochs,
-        accelerator="gpu",
-        devices=conf.gpus,
-        strategy="ddp_find_unused_parameters_false" if conf.gpus > 1 else None,
+        max_epochs=1,
+        accelerator="auto",
+        devices=1,
+        strategy="auto",
         callbacks=callbacks,
-        limit_train_batches=conf.limit_train_batches,
-        limit_val_batches=conf.limit_val_batches,
+        # limit_train_batches=1.0,
+        limit_val_batches=0.01, #conf.limit_val_batches,
         sync_batchnorm=conf.sync_bn,
     )
 
     model = instantiate(conf.model.target)
     datamodule = instantiate(conf.datamodule)
+
+    breakpoint()
     trainer.fit(model, datamodule, ckpt_path=conf.checkpoint)
 
 
