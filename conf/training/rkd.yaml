@@ -1,0 +1,15 @@
+# YAML config for training with RKD (Relation Knowledge Distillation)
+# see trainer_forecast_rkd.py for implementation details
+
+
+teacher:
+  ckpt_path: ./checkpoints/empd.ckpt
+defaults:
+  - /model/emp@teacher.model
+
+rkd:
+  _target_: src.model.trainer_forecast_rkd.RKDTrainer
+  lambda_distance: 5.0
+  lambda_angle: 50.0
+  rkd_training: false
+  rkd_on: x_agent  # or "x_encoder"

@@ -1,14 +1,14 @@
 defaults:
   - hydra: default
   - datamodule: av2
-  - model: emp
+  - model: emp_small
+  - training: rkd
 
 seed: 2333
 monitor: val_loss
 save_top_k: 10
 
 data_root:
-checkpoint:
 pretrained_weights:
 dm: av2
 output: ${model.name}-${model.phase}_${dm}

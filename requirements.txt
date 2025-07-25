@@ -12,6 +12,6 @@ timm
 plotly
 torchmetrics==0.10.2
 scikit-learn
-onnx
-onnxscript
-onnxruntime
+# onnx
+# onnxscript
+# onnxruntime
