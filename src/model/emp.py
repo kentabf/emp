@@ -204,10 +204,14 @@ class EMP(nn.Module):
         
         y_hat_eps = y_hat[:, :, -1]
 
+        if torch.isnan(x_encoder).any():
+            breakpoint()
+
         return {
             "y_hat": y_hat,
             "pi": pi,
             "y_hat_others": y_hat_others,
             "y_hat_eps": y_hat_eps,
-            "x_agent": x_agent
+            "x_agent": x_agent,
+            "x_encoder": x_encoder,
         }

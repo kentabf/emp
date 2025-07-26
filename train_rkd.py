@@ -3,7 +3,6 @@
 Example call:
 
 python train_rkd.py \
-    data_root="/path/to/av2" \
     teacher_checkpoint="/path/to/emp_teacher.ckpt" \
     student_model=emp_small \
     batch_size=128 \
@@ -14,6 +13,8 @@ from __future__ import annotations
 import uuid
 import argparse
 from pathlib import Path
+
+import torch.profiler as profiler
 
 import torch
 
@@ -88,7 +89,18 @@ def main(conf):
         # default_root_dir=f"./lightning_logs/{version_name}",
     )
 
-    trainer.fit(rkd_model, datamodule=datamodule)
+    with profiler.profile(
+        activities=[profiler.ProfilerActivity.CPU, profiler.ProfilerActivity.CUDA],
+        on_trace_ready=profiler.tensorboard_trace_handler(output_dir),
+        record_shapes=False,  # Disable recording tensor shapes
+        with_stack=False,     # Disable capturing the Python call stack
+        schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=1)  # Profile a subset of steps
+    ) as prof:
+        trainer.fit(rkd_model, datamodule=datamodule)
+
+    # Print profiling summary
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    print(f"Profiling results saved to: {output_dir}")
 
 
 if __name__ == "__main__":
