@@ -129,10 +129,8 @@ class RKDTrainer(Trainer):
         others_reg_loss = F.smooth_l1_loss(y_hat_others[others_reg_mask], y_others[others_reg_mask])
         task_loss += others_reg_loss
 
-        loss = task_loss
-
         losses = {
-            "loss": loss,
+            "loss": task_loss,
             "task_loss": task_loss.item(),
             "reg_loss": agent_reg_loss.item(),
             "cls_loss": agent_cls_loss.item(),
@@ -156,7 +154,7 @@ class RKDTrainer(Trainer):
             angle_loss = F.huber_loss(angles, angles_teacher, reduction="mean")
             rkd_loss += self.lambda_angle * angle_loss
 
-            loss += rkd_loss
+            loss = task_loss + rkd_loss
 
             losses.update({
                 "loss": loss,

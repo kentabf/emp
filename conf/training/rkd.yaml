@@ -11,5 +11,5 @@ rkd:
   _target_: src.model.trainer_forecast_rkd.RKDTrainer
   lambda_distance: 5.0
   lambda_angle: 50.0
-  rkd_training: false
+  rkd_training: true
   rkd_on: x_agent  # or "x_encoder"

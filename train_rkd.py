@@ -1,20 +1,14 @@
 """Training script for *Relational Knowledge Distillation*.
 
-Example call:
-
-python train_rkd.py \
-    teacher_checkpoint="/path/to/emp_teacher.ckpt" \
-    student_model=emp_small \
-    batch_size=128 \
-    gpus=1
 """
 
 from __future__ import annotations
 import uuid
 import argparse
 from pathlib import Path
-
+import datetime
 import torch.profiler as profiler
+from pytorch_lightning.profilers import SimpleProfiler
 
 import torch
 
@@ -37,8 +31,6 @@ from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 from importlib import import_module
 from hydra.utils import instantiate, to_absolute_path
-
-from src.utils.helpers import num_params
 
 from pytorch_lightning import Callback, Trainer
 
@@ -74,33 +66,40 @@ def main(conf):
     ckpt_cb = ModelCheckpoint(every_n_epochs=1, save_top_k=-1, save_last=True)
     lr_cb = LearningRateMonitor(logging_interval="epoch")
 
-    # version_name = f"version_{uuid.uuid4().hex[:6]}_rkd={conf.rkd_training}"
+    run_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    version_name = f"version_{run_time}_rkd={rkd_model.rkd_training}"
+    profiler = SimpleProfiler()
     trainer = pl.Trainer(
-        accelerator="cpu",
-        max_epochs=15,
-        devices=4,
-        strategy="ddp",
-        accumulate_grad_batches=4,
+        accelerator="mps",
+        max_epochs=2,
+        devices=1,
+        # strategy="ddp",
+        # accumulate_grad_batches=4,
+        profiler=profiler,
         gradient_clip_val=conf.gradient_clip_val,
         gradient_clip_algorithm=conf.gradient_clip_algorithm,
         callbacks=[ckpt_cb, lr_cb],
-        limit_train_batches=0.4,
+        limit_train_batches=0.01,
         limit_val_batches=0.01, #conf.limit_val_batches,
         # default_root_dir=f"./lightning_logs/{version_name}",
     )
 
-    with profiler.profile(
-        activities=[profiler.ProfilerActivity.CPU, profiler.ProfilerActivity.CUDA],
-        on_trace_ready=profiler.tensorboard_trace_handler(output_dir),
-        record_shapes=False,  # Disable recording tensor shapes
-        with_stack=False,     # Disable capturing the Python call stack
-        schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=1)  # Profile a subset of steps
-    ) as prof:
-        trainer.fit(rkd_model, datamodule=datamodule)
 
-    # Print profiling summary
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-    print(f"Profiling results saved to: {output_dir}")
+    # with profiler.profile(
+    #     activities=[profiler.ProfilerActivity.CPU, profiler.ProfilerActivity.CUDA],
+    #     on_trace_ready=profiler.tensorboard_trace_handler(output_dir),
+    #     record_shapes=False,  # Disable recording tensor shapes
+    #     with_stack=False,     # Disable capturing the Python call stack
+    #     schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=1)  # Profile a subset of steps
+    # ) as prof:
+    trainer.fit(rkd_model, datamodule=datamodule)
+
+    # # Print profiling summary
+    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    # print(f"Profiling results saved to: {output_dir}")
+
+    epoch_times = profiler.recorded_durations["run_training_epoch"]
+    print("Wall‑clock seconds per epoch:", epoch_times)
 
 
 if __name__ == "__main__":
