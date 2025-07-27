@@ -11,6 +11,8 @@ import torch.profiler as profiler
 from pytorch_lightning.profilers import SimpleProfiler
 
 import torch
+import pickle
+import json
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
@@ -63,15 +65,18 @@ def main(conf):
     rkd_params.pop("_target_", None) # Remove the _target_ key if it exists
     rkd_model = RKDTrainer(**rkd_params)
 
+    from src.utils.helpers import num_params
+    print(f"Number of parameters in RKD {conf.model.name} model: {num_params(rkd_model) - num_params(teacher_model)}")
+
     ckpt_cb = ModelCheckpoint(every_n_epochs=1, save_top_k=-1, save_last=True)
     lr_cb = LearningRateMonitor(logging_interval="epoch")
 
     run_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    version_name = f"version_{run_time}_rkd={rkd_model.rkd_training}"
+    version_name = f"{run_time}_{conf.model.name}_rkd={conf.training.rkd.rkd_on}"
     profiler = SimpleProfiler()
     trainer = pl.Trainer(
-        accelerator="mps",
-        max_epochs=2,
+        accelerator="auto",
+        max_epochs=60, 
         devices=1,
         # strategy="ddp",
         # accumulate_grad_batches=4,
@@ -79,27 +84,23 @@ def main(conf):
         gradient_clip_val=conf.gradient_clip_val,
         gradient_clip_algorithm=conf.gradient_clip_algorithm,
         callbacks=[ckpt_cb, lr_cb],
-        limit_train_batches=0.01,
-        limit_val_batches=0.01, #conf.limit_val_batches,
-        # default_root_dir=f"./lightning_logs/{version_name}",
+        limit_train_batches=0.005,
+        limit_val_batches=0.005, #conf.limit_val_batches,
+        default_root_dir=f"./lightning_logs/{version_name}",
     )
 
-
-    # with profiler.profile(
-    #     activities=[profiler.ProfilerActivity.CPU, profiler.ProfilerActivity.CUDA],
-    #     on_trace_ready=profiler.tensorboard_trace_handler(output_dir),
-    #     record_shapes=False,  # Disable recording tensor shapes
-    #     with_stack=False,     # Disable capturing the Python call stack
-    #     schedule=profiler.schedule(wait=1, warmup=1, active=3, repeat=1)  # Profile a subset of steps
-    # ) as prof:
     trainer.fit(rkd_model, datamodule=datamodule)
 
-    # # Print profiling summary
-    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-    # print(f"Profiling results saved to: {output_dir}")
-
     epoch_times = profiler.recorded_durations["run_training_epoch"]
-    print("Wall‑clock seconds per epoch:", epoch_times)
+    print("Wall clock time per epoch:", [round(t, 2) for t in epoch_times])
+    # save as pickle
+    pickle_path = f"./lightning_logs/{version_name}/epoch_times.pkl"
+    with open(pickle_path, "wb") as f:
+        pickle.dump(epoch_times, f)
+    # save wall clock data as JSON
+    json_path = f"./lightning_logs/{version_name}/epoch_times.json"
+    with open(json_path, "w") as f:
+        json.dump(list(epoch_times), f)
 
 
 if __name__ == "__main__":

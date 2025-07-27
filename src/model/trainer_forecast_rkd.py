@@ -22,7 +22,7 @@ class RKDTrainer(Trainer):
         self.teacher_model = teacher_model.eval()  # keep teacher in eval / frozen
         for p in self.teacher_model.parameters():
             p.requires_grad_(False)
-        self.rkd_training = rkd_training
+        self.rkd_training = False if rkd_on is None else True
         self.rkd_on = rkd_on
         self.lambda_distance = lambda_distance
         self.lambda_angle = lambda_angle
@@ -209,14 +209,15 @@ class RKDTrainer(Trainer):
         out = self(data)
         metrics = self.val_metrics(out, data["y"][:, 0])
 
-        self.log(
-            "val/reg_loss",
-            losses["reg_loss"],
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-            sync_dist=True,
-        )
+        for k, v in losses.items():
+            self.log(
+                f"val/{k}",
+                v,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+                sync_dist=True,
+            )
 
         for k in self.val_scores.keys(): self.val_scores[k].append(metrics[k].item())
 
