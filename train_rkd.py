@@ -84,8 +84,8 @@ def main(conf):
         gradient_clip_val=conf.gradient_clip_val,
         gradient_clip_algorithm=conf.gradient_clip_algorithm,
         callbacks=[ckpt_cb, lr_cb],
-        limit_train_batches=0.005,
-        limit_val_batches=0.005, #conf.limit_val_batches,
+        # limit_train_batches=0.005,
+        # limit_val_batches=0.005, #conf.limit_val_batches,
         default_root_dir=f"./lightning_logs/{version_name}",
     )
 
@@ -93,14 +93,14 @@ def main(conf):
 
     epoch_times = profiler.recorded_durations["run_training_epoch"]
     print("Wall clock time per epoch:", [round(t, 2) for t in epoch_times])
-    # save as pickle
-    pickle_path = f"./lightning_logs/{version_name}/epoch_times.pkl"
-    with open(pickle_path, "wb") as f:
-        pickle.dump(epoch_times, f)
     # save wall clock data as JSON
     json_path = f"./lightning_logs/{version_name}/epoch_times.json"
     with open(json_path, "w") as f:
         json.dump(list(epoch_times), f)
+    # pickle the profiler
+    pickle_path = f"./lightning_logs/{version_name}/profiler.pkl"
+    with open(pickle_path, "wb") as f:
+        pickle.dump(profiler, f)
 
 
 if __name__ == "__main__":
